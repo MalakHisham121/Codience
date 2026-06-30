@@ -71,13 +71,6 @@ def _tversky_bulk(
     dtag = f"{base_dtag}_{date_str}"    
     out = {}
     
-    # DEBUG: Print PR files
-    print(f"\n🔍 DEBUG: PR has {len(pr_file_paths)} files")
-    if pr_file_paths:
-        print(f"   Sample PR files (first 5):")
-        for f in pr_file_paths[:5]:
-            print(f"     - {f}")
-    
     for c in candidates:
         name = c.get("name", "")
         if not name:
@@ -91,11 +84,8 @@ def _tversky_bulk(
 
         commit_history = c.get("commit_history", [])
         if not commit_history:
-            print(f"   ⚠️ {name}: No commit history! Tversky = 0.0")
             out[name] = 0.0
             continue
-
-        print(f"\n   🔄 {name}: Building profile from {len(commit_history)} commits")
         
         profile = cache.get_profile(repo, name, dtag)
         if profile is None:
@@ -107,31 +97,6 @@ def _tversky_bulk(
                 reference_date=ref,
             )
             cache.set_profile(repo, name, profile, dtag)
-            print(f"   ✅ {name}: Profile built with {len(profile)} unique file paths")
-        else:
-            print(f"   📦 {name}: Profile from cache with {len(profile)} unique paths")
-        
-        # DEBUG: Show top files from developer
-        if profile:
-            print(f"   📁 {name}'s top files (by weight):")
-            top_files = sorted(profile.items(), key=lambda x: x[1], reverse=True)[:5]
-            for file_path, weight in top_files:
-                print(f"      - {file_path} (weight: {weight:.3f})")
-        
-        # DEBUG: Calculate overlap
-        pr_set = set(pr_file_paths)
-        dev_set = set(profile.keys())
-        overlap = pr_set & dev_set
-        print(f"   🔍 Overlap with PR: {len(overlap)} files")
-        if overlap:
-            print(f"      Common files: {', '.join(list(overlap)[:5])}")
-        else:
-            print(f"      ❌ NO file overlap found!")
-            # Show what developer works on vs PR
-            dev_sample = list(dev_set)[:3] if dev_set else []
-            pr_sample = pr_file_paths[:3] if pr_file_paths else []
-            print(f"      Developer sample: {dev_sample}")
-            print(f"      PR sample: {pr_sample}")
 
         sim = tversky_similarity(profile, m_c, TVERSKY_ALPHA, TVERSKY_BETA)
         cache.set_similarity(repo, name, pr_hash, sim)
@@ -142,7 +107,6 @@ def _tversky_bulk(
 
 def _call_llm_scorer(
     pr_analysis: dict,
-    rag_roles: list,
     candidates: List[dict],
     tv_by_name: Dict[str, float],
     judge_feedback: Optional[str] = None,
@@ -173,8 +137,6 @@ def _call_llm_scorer(
             f"  Commit skills: {', '.join(c.get('commit_skills', [])) or 'none'}\n"
             f"  Explicit skills: {', '.join(c.get('raw_skills', [])) or 'none'}{rag_text}{jira_text}"
         )
-
-    rag_ctx = "\n".join(f"- {r.page_content}" for r in rag_roles) if rag_roles else "No vector DB match."
     
     pr_skills_str = ", ".join(pr_analysis.get("required_skills", []))
     pr_langs_str = ", ".join(pr_analysis.get("detected_languages", []))
@@ -184,7 +146,6 @@ def _call_llm_scorer(
         pr_skills=f"{pr_skills_str}; languages: {pr_langs_str}",
         pr_analysis_summary=pr_analysis.get("rag_query", pr_analysis.get("summary", "")),
         seniority_signals=seniority,
-        rag_context=rag_ctx,
         candidates_text="\n\n".join(lines),
     )
 
@@ -207,7 +168,6 @@ def _call_llm_scorer(
 
 def calculate_match_scores(
     pr_analysis: Dict[str, Any],
-    rag_roles: List,
     candidates: List[Dict[str, Any]],
     pr_file_paths: List[str] = None,
     repo: str = "unknown",
@@ -245,7 +205,7 @@ def calculate_match_scores(
     print(f"  📊 Tversky: scored {len(tv_scores)} candidates.")
     
     # 2. AI scores
-    ai_results = _call_llm_scorer(pr_analysis, rag_roles, candidates, tv_scores, judge_feedback=judge_feedback)
+    ai_results = _call_llm_scorer(pr_analysis, candidates, tv_scores, judge_feedback=judge_feedback)
     ai_by_name = {r["name"].lower(): r for r in ai_results}
     
     # 3. Apply formula

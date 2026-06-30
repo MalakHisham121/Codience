@@ -47,16 +47,14 @@ PULL REQUEST REQUIREMENTS:
 - Required Skills: {pr_skills} 
 - Analysis Summary: {pr_analysis_summary} 
 
-VECTOR DATABASE RECOMMENDATIONS (Historical Best Roles):
-{rag_context}
-
 CANDIDATES PROFILES:
 {candidates_text}
 
 Task:
 Rank ALL candidates based on how well their historical commit skills and current Jira domain match the PR requirements. 
 Assign each a 'confidence_score' from 0 to 100, where 100 is an absolutely perfect match and 0 is no relevance at all.
-Also provide a short 1-sentence 'justification' for why they received this score.
+Also provide a short 1-sentence 'justification' for why they received this score. 
+CRITICAL: The justification MUST be written in plain English for a non-technical end-user. Do NOT mention internal metrics like "Tversky similarity", "confidence scores", "AI scores", or numerical weights. Explain their relevance naturally (e.g., "Has recently modified these exact files and has strong Python experience").
 
 Output strictly in the following JSON array format:
 [

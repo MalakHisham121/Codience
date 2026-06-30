@@ -15,7 +15,6 @@ from .commit_history_utils import session, fetch_commits, map_commits_to_skills,
 from .scorer_agent import calculate_match_scores
 from .jira_agent import analyze_jira_context
 from .evaluator_agent import evaluate_recommendations
-from ..Data.searching_into_vectordb import search_vector_db
 from ..Data.commit_diff_vectordb import search_similar_commits
 from .profile_cache import ProfileCache
 
@@ -633,7 +632,6 @@ class ReviewerRecommender:
         combined_patch = "\n".join(pr_patches)[:3000] # Limit size for embedding
         
         vector_db_candidates = {}
-        rag_roles = []
         if combined_patch:
             try:
                 # Get top 20 matching commit chunks
@@ -744,7 +742,6 @@ class ReviewerRecommender:
 
         # === JIRA ANALYSIS (For Top Candidates Only) ===
         if jira_token and jira_cloud_id and jira_project_key:
-            print(f"\n🎫 Fetching Jira Context for Top {len(preliminary_candidates)} Candidates...")
             for c in preliminary_candidates:
                 # Find Jira username if provided in required_reviewers, else fallback to github name
                 meta = required_map.get(c["name"].lower(), {})
@@ -766,22 +763,6 @@ class ReviewerRecommender:
         
         # 6. Scorer Matchmaker Agent with Tversky + Formula
         print("🧠 Calculating AI Confidence Scores with Tversky formula...")
-        # Add this debug before calling calculate_match_scores
-        print("\n🔍 DEBUG: Checking commit history for candidates:")
-        for name in candidate_names:
-            if name in self.commit_history_cache:
-                commits = self.commit_history_cache[name]
-                print(f"   {name}: {len(commits)} commits in history")
-                if commits:
-                    sample_commit = commits[0]
-                    files = sample_commit.get("files", [])
-                    print(f"      Sample commit files: {[f.get('filename', '') for f in files[:3]]}")
-            else:
-                print(f"   {name}: NOT in commit_history_cache!")
-
-        print(f"\n🔍 DEBUG: PR files being compared:")
-        for f in pr_file_paths[:10]:
-            print(f"   - {f}")
             
         max_retries = 1
         current_retry = 0
@@ -794,7 +775,6 @@ class ReviewerRecommender:
                 
             ai_rankings = calculate_match_scores(
                 pr_analysis=analysis,
-                rag_roles=rag_roles,
                 candidates=preliminary_candidates,
                 pr_file_paths=pr_file_paths,
                 repo=f"{self.owner}/{self.repo}",
@@ -822,7 +802,7 @@ class ReviewerRecommender:
                 final_candidates.append({
                     "name": c["name"],
                     "confidence_score": final_score,
-                    "justification": ai_result.get("justification", "Tversky-based scoring with AI enhancement."),
+                    "justification": ai_result.get("justification", "Selected based on past code contributions and relevant skills."),
                     "reasons": reasons,
                     "required_reviewer": c.get("required_reviewer", False),
                     "score_breakdown": ai_result.get("score_breakdown", {

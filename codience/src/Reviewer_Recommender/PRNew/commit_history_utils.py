@@ -93,8 +93,9 @@ def is_meaningful_commit_ai(commit_message: str, files: list) -> bool:
         filenames_str=filenames_str
     )
     
-    # Call the LLM with a very low max_tokens since we only need YES/NO
-    response = generate_with_resilience(prompt, max_tokens=5)
+    # Call the LLM (generate_with_resilience does not support max_tokens kwarg currently)
+    response_obj = generate_with_resilience(prompt, purpose="commit_filter")
+    response = response_obj.get("text", "") if isinstance(response_obj, dict) else response_obj
     
     if not response:
         # Fallback to true if LLM fails so we don't accidentally drop good data
@@ -279,10 +280,7 @@ def map_commits_to_skills(commits, max_llm_calls=None, repo="huggingface/transfo
     
     authors_to_process = list(set(authors_to_process))  # Remove duplicates
     
-    print(f"\n📊 Summary:")
-    print(f"   Total authors: {len(commits_by_author)}")
-    print(f"   Already completed with skills: {len(dev_skills)}")
-    print(f"   Need to process: {len(authors_to_process)}")
+    print(f"📊 [Commit History] Total authors: {len(commits_by_author)} | Cached: {len(dev_skills)} | Processing: {len(authors_to_process)}")
     
     if not authors_to_process:
         print("✅ All authors already cached with skills! Nothing to process.")
@@ -292,7 +290,7 @@ def map_commits_to_skills(commits, max_llm_calls=None, repo="huggingface/transfo
     # Process each new author
     for idx, author in enumerate(authors_to_process, 1):
         author_commits = commits_by_author[author]
-        print(f"\n🔄 [{idx}/{len(authors_to_process)}] Analyzing {author} ({len(author_commits)} commits)...")
+        print(f"🔄 [{idx}/{len(authors_to_process)}] Analyzing {author} ({len(author_commits)} commits)...")
         
         author_skills = set()
         
@@ -312,7 +310,7 @@ def map_commits_to_skills(commits, max_llm_calls=None, repo="huggingface/transfo
                 
                 # Skip trivial commits using AI filter
                 if not is_meaningful_commit_ai(commit_message, files):
-                    print(f"   🤖 AI Filtered out trivial commit: {commit_message[:30]}...")
+                    # print(f"   🤖 AI Filtered out trivial commit: {commit_message[:30]}...")
                     continue
                 
                 # Filter out noise (lockfiles, docs, images, giant files)
@@ -323,7 +321,6 @@ def map_commits_to_skills(commits, max_llm_calls=None, repo="huggingface/transfo
                 # Update commit files so LLM only sees filtered files
                 commit["files"] = filtered_files
                 files = filtered_files
-                
                 
                 # Prepare data for Vector DB RAG Indexing
                 to_index = []
@@ -362,8 +359,7 @@ def map_commits_to_skills(commits, max_llm_calls=None, repo="huggingface/transfo
         else:
             print(f"   ⚠️ No skills extracted for {author} - not saving to cache")
         
-        print(f"   ✅ Completed {author}: {len(author_skills)} skills extracted (RAG indexed)")
-        print(f"   📊 Progress: {idx}/{len(authors_to_process)} authors processed")
+        print(f"✅ Completed {author}: {len(author_skills)} skills extracted. Progress: {idx}/{len(authors_to_process)}")
     
     print(f"\n✅ Complete! Processed {len(dev_skills)} total developers")
     

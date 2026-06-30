@@ -122,23 +122,15 @@ def fetch_jira_tickets(
     cloud_id: str = None,
     project_key: str = None,
 ) -> list[dict]:
-    # ─── DEBUG SECTION ───
-    print(f"🔍 DEBUG: Resolving Jira identity for {username}")
-    
     # This data should be passed from frontend or backend
     target_user = jira_username or os.getenv("JIRA_USERNAME", username)
     resolved_token = token or os.getenv("JIRA_API_TOKEN")
     resolved_cloud_id = cloud_id or os.getenv("JIRA_CLOUD_ID")
     resolved_project_key = project_key or os.getenv("JIRA_PROJECT_KEY")
 
-    print(f"   -> Target User: {target_user}")
-    print(f"   -> Token exists: {bool(resolved_token)}")
-    print(f"   -> Cloud ID exists: {bool(resolved_cloud_id)}")
-    print(f"   -> Project Key exists: {bool(resolved_project_key)}")
-
     # Check for None values - C# will reject these with a 400 error!
     if not all([resolved_token, resolved_cloud_id, resolved_project_key]):
-        print("❌ ERROR: Missing required Jira credentials in .env or API request.")
+        print(f"⚠️  [Jira] Missing required Jira credentials for user: {username}.")
         return []
 
     try:
@@ -150,7 +142,7 @@ def fetch_jira_tickets(
         )
         return tickets
     except Exception as exc:
-        print(f"⚠️ Error: {exc}")
+        print(f"⚠️  [Jira] Failed to fetch tickets: {exc}")
         return []
 
 

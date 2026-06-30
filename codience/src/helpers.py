@@ -14,7 +14,6 @@ from codience.src.Reviewer_Recommender.PRNew.Reviewer_Engine import ReviewerReco
 from codience.src.Reviewer_Recommender.PRNew.jira_agent import analyze_jira_tickets, fetch_jira_tickets
 from codience.src.Reviewer_Recommender.PRNew.commit_history_utils import fetch_commit_history_for_author, map_commits_to_skills
 from codience.src.Reviewer_Recommender.PRNew.analysis_PR import extract_pr_skills
-from codience.src.Reviewer_Recommender.Data.searching_into_vectordb import search_vector_db
 from codience.src.Reviewer_Recommender.PRNew.scorer_agent import calculate_match_scores
 from codience.src.Reviewer_Recommender.Data.commit_diff_vectordb import search_similar_commits
 
@@ -82,13 +81,6 @@ def get_composite_recommendations(pr_data: dict, candidates: list[dict], options
         required_languages.remove("C#")
         required_languages.add(".NET")
 
-    rag_query = analysis.get('rag_query', '') or ', '.join(required_languages)
-    try:
-        rag_roles = search_vector_db(rag_query, k=10) if rag_query else []
-    except Exception as e:
-        print(f"⚠️ Vector DB Search Failed: {e}")
-        rag_roles = []
-
     pr_patch_text = "\n".join([f.get("patch", "") for f in pr_data.get("files", []) if f.get("patch")])
     rag_commits = []
     if pr_patch_text:
@@ -113,7 +105,7 @@ def get_composite_recommendations(pr_data: dict, candidates: list[dict], options
         matched_diffs = [res.page_content for res in rag_commits if res.metadata.get("author", "").lower() == c["name"].lower()]
         c["rag_code_matches"] = matched_diffs[:3]
 
-    ai_rankings = calculate_match_scores(analysis, rag_roles, candidates)
+    ai_rankings = calculate_match_scores(pr_analysis=analysis, candidates=candidates)
     ai_by_name = {r.get("name", "").lower(): r for r in ai_rankings}
 
     final_candidates = []
