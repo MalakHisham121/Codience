@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./styles/GetRepoName.css";
+import { getVsCodeApi, isVsCodeWebview } from "../services/vscodeApi";
 
 interface GitHubAppInstallLocationState {
   installUrl?: string;
@@ -23,7 +24,11 @@ const GitHubAppInstall = () => {
 
   const handleInstall = () => {
     if (installUrl) {
-      window.open(installUrl, "_blank", "noopener,noreferrer");
+      if (isVsCodeWebview()) {
+        getVsCodeApi()?.postMessage({ command: "openExternal", url: installUrl });
+      } else {
+        window.location.assign(installUrl);
+      }
     }
 
     navigate("/getRepo");

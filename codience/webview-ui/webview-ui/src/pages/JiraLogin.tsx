@@ -1,21 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles/JiraLogin.css";
 import jiraService from "../services/jiraService.ts";
-
-const isVsCodeWebview = () =>
-  typeof (window as Window & { acquireVsCodeApi?: () => unknown }).acquireVsCodeApi ===
-  "function";
-
-type VsCodeApi = {
-  postMessage: (message: unknown) => void;
-};
+import { getVsCodeApi, isVsCodeWebview } from "../services/vscodeApi";
 
 const JiraLogin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const vscodeApiRef = useRef<VsCodeApi | null>(null);
 
   const handleLogin = async () => {
     try {
@@ -26,17 +18,7 @@ const JiraLogin = () => {
       const url = await jiraService.fetchLoginUrl(state);
 
       if (state === "vscode") {
-        if (!vscodeApiRef.current) {
-          const acquireVsCodeApi = (window as Window & {
-            acquireVsCodeApi?: () => VsCodeApi;
-          }).acquireVsCodeApi;
-
-          if (typeof acquireVsCodeApi === "function") {
-            vscodeApiRef.current = acquireVsCodeApi();
-          }
-        }
-
-        vscodeApiRef.current?.postMessage({ command: "openExternal", url });
+        getVsCodeApi()?.postMessage({ command: "openExternal", url });
         return;
       }
 
