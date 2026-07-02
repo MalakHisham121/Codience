@@ -3,6 +3,8 @@ using Core.Abstraction;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Share;
+using System.IO;
+using Microsoft.AspNetCore.Hosting;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -10,19 +12,21 @@ public class JiraController : ControllerBase
 {
     private readonly IJiraService _jiraService;
     private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _env;
 
-    public JiraController(IJiraService jiraService, IConfiguration configuration)
+    public JiraController(IJiraService jiraService, IConfiguration configuration, IWebHostEnvironment env)
     {
         _jiraService = jiraService;
         _configuration = configuration;
+        _env = env;
     }
 
     [HttpGet("login")]
-    public IActionResult Login()
+    public IActionResult Login([FromQuery] string state = "vscode")
     {
         var clientId = _configuration["Jira:ClientId"];
         var redirectUri = _configuration["Jira:CallbackUrl"];
-        var url = $"https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id={clientId}&scope=read:jira-user read:jira-work&redirect_uri={redirectUri}&response_type=code&prompt=consent";
+        var url = $"https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id={clientId}&scope=read:jira-user read:jira-work&redirect_uri={redirectUri}&response_type=code&prompt=consent&state={state}";
         
         // Return URL as JSON so React can handle the redirection
         return Ok(new { url });
@@ -62,12 +66,22 @@ public class JiraController : ControllerBase
     }
 
     [HttpGet("callback")]
-    public async Task<IActionResult> Callback(string code)
+    public async Task<IActionResult> Callback(string code, string state = "vscode")
     {
         var frontendUrl = _configuration["Jira:FrontendUrl"];
         var redirectPath = _configuration["Jira:FrontendRedirectPath"] ?? "/callback";
-        
-        return Redirect($"{frontendUrl}{redirectPath}?code={code}");
+        var redirectUri = $"{frontendUrl}{redirectPath}?code={code}";
+
+        if (state == "vscode")
+        {
+            var templatePath = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "Infrastructure", "Presentation", "Templates", "JiraAuthSuccess.html"));
+            var html = await System.IO.File.ReadAllTextAsync(templatePath);
+            html = html.Replace("{{CODE}}", code).Replace("{{REDIRECT_URI}}", redirectUri);
+            return Content(html, "text/html");
+        }
+
+        // Default web app behavior: normal HTTP redirect
+        return Redirect(redirectUri);
     }
 
     [HttpPost("assigned-tickets")]

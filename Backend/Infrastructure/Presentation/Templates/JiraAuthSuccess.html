@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Authentication Successful</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f3f4f6; color: #333; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; max-width: 500px; width: 100%; }
+        h1 { color: #0052CC; margin-top: 0; }
+        p { margin-bottom: 20px; line-height: 1.5; }
+        .code-box { background-color: #f4f5f7; border: 1px solid #dfe1e6; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 18px; letter-spacing: 1px; margin-bottom: 20px; word-break: break-all; }
+        .btn { display: inline-block; background-color: #0052CC; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: 500; transition: background-color 0.2s; }
+        .btn:hover { background-color: #0047b3; }
+        .footer { margin-top: 30px; font-size: 12px; color: #6b778c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Successful</h1>
+        <p>You have successfully authorized the Codience extension to access your Jira account.</p>
+        
+        <p>If you are not automatically redirected back to VS Code, please copy the authorization code below and paste it into the Codience extension prompt:</p>
+        
+        <div class="code-box">{{CODE}}</div>
+        
+        <a href="{{REDIRECT_URI}}" class="btn">Return to VS Code</a>
+        
+        <div class="footer">You can now close this window safely.</div>
+    </div>
+    <script>
+        // Attempt to redirect back to VS Code or the configured frontend URL automatically
+        setTimeout(function() {
+            window.location.href = '{{REDIRECT_URI}}';
+        }, 1500);
+    </script>
+</body>
+</html>
