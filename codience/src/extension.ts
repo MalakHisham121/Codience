@@ -116,6 +116,7 @@ class SidebarProvider implements vscode.WebviewViewProvider {
             https://sphery-arlen-nondecorative.ngrok-free.dev
             https://fordless-samella-unexpendable.ngrok-free.dev
             http://localhost:5051
+            http://127.0.0.1:5051
             http://localhost:8000
             http://127.0.0.1:8000
             http://127.0.0.1:8001
@@ -146,7 +147,11 @@ class SidebarProvider implements vscode.WebviewViewProvider {
           return;
         }
         if (message.command === "openExternal" && message.url) {
-          vscode.env.openExternal(vscode.Uri.parse(String(message.url)));
+          let url = String(message.url);
+          if (url.includes("state=vscode")) {
+            url = url.replace("state=vscode", `state=vscode-${vscode.env.uriScheme}`);
+          }
+          vscode.env.openExternal(vscode.Uri.parse(url));
         }
       } catch (err) {
         console.error("Error handling message from webview:", err);
