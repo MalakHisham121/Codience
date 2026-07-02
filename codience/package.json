@@ -9,9 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onView:sidebarView"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {

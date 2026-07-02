@@ -70,59 +70,73 @@ class SidebarProvider implements vscode.WebviewViewProvider {
       ],
     };
 
-    const indexPath = path.join(
-      this._extensionUri.fsPath,
-      "webview-ui",
-      "webview-ui",
-      "dist",
-      "index.html",
-    );
+    try {
+      const indexPath = path.join(
+        this._extensionUri.fsPath,
+        "webview-ui",
+        "webview-ui",
+        "dist",
+        "index.html",
+      );
 
-    let html = fs.readFileSync(indexPath, "utf-8");
+      let html = fs.readFileSync(indexPath, "utf-8");
 
-    html = html.replace(
-      /(src|href)="(.+?)"/g,
-      (_match: string, attr: string, link: string) => {
-        if (/^https?:\/\//.test(link)) {
-          return _match;
-        }
+      html = html.replace(
+        /(src|href)="(.+?)"/g,
+        (_match: string, attr: string, link: string) => {
+          if (/^https?:\/\//.test(link)) {
+            return _match;
+          }
 
-        const uri = webview.asWebviewUri(
-          vscode.Uri.joinPath(
-            this._extensionUri,
-            "webview-ui",
-            "webview-ui",
-            "dist",
-            link,
-          ),
-        );
+          const uri = webview.asWebviewUri(
+            vscode.Uri.joinPath(
+              this._extensionUri,
+              "webview-ui",
+              "webview-ui",
+              "dist",
+              link,
+            ),
+          );
 
-        return `${attr}="${uri}"`;
-      },
-    );
+          return `${attr}="${uri}"`;
+        },
+      );
 
-    html = html.replace(
-      "<head>",
-      `<head>
-    <meta http-equiv="Content-Security-Policy"
-      content="
-        default-src 'none';
-        img-src ${webview.cspSource} https:;
-        style-src ${webview.cspSource} 'unsafe-inline';
-        script-src ${webview.cspSource};
-        connect-src
-          https://codience.onrender.com
-          https://sphery-arlen-nondecorative.ngrok-free.dev
-          https://fordless-samella-unexpendable.ngrok-free.dev
-          http://localhost:5051
-          http://localhost:8000
-          http://127.0.0.1:8000
-          http://127.0.0.1:8001
-          http://127.0.0.1:8002
-          http://127.0.0.1:8003;
-      ">
-  `,
-    );
+      html = html.replace(
+        "<head>",
+        `<head>
+      <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'none';
+          img-src ${webview.cspSource} https:;
+          style-src ${webview.cspSource} 'unsafe-inline';
+          script-src ${webview.cspSource};
+          connect-src
+            https://codience.onrender.com
+            https://sphery-arlen-nondecorative.ngrok-free.dev
+            https://fordless-samella-unexpendable.ngrok-free.dev
+            http://localhost:5051
+            http://localhost:8000
+            http://127.0.0.1:8000
+            http://127.0.0.1:8001
+            http://127.0.0.1:8002
+            http://127.0.0.1:8003;
+        ">
+    `,
+      );
+
+      webview.html = html;
+    } catch (err: any) {
+      console.error("Error loading webview index.html:", err);
+      webview.html = `<!DOCTYPE html>
+      <html>
+        <body>
+          <h2>Error loading webview</h2>
+          <pre>${err.message}</pre>
+          <pre>${err.stack}</pre>
+        </body>
+      </html>`;
+    }
 
     // Wire messages from the webview:
     // - openExternal: extension will open the external browser for OAuth
@@ -143,7 +157,5 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     webviewView.onDidDispose(() => {
       this._webviewView = undefined;
     });
-
-    webview.html = html;
   }
 }
