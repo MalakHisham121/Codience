@@ -3,21 +3,14 @@ import type {
   RecommendedReviewer,
   ReviewerRecommendationRequest,
   ReviewerRecommendationSettings,
+  ReviewerRecommendationApiItem,
+  ReviewerRecommendationApiResponse,
 } from "../types/Reviewers";
 
 const REVIEWER_RECOMMENDATIONS_URL = "http://localhost:8000/api/recommend-reviewers";
 
 const recommendationCache = new Map<string, Promise<RecommendedReviewer[]>>();
 
-interface ReviewerRecommendationApiItem {
-  name: string;
-  confidence_score: number;
-  justification?: string;
-}
-
-interface ReviewerRecommendationApiResponse {
-  recommended_reviewers?: ReviewerRecommendationApiItem[];
-}
 
 const getGitHubContext = () => {
   const owner = (localStorage.getItem("ownerName") ?? "").trim();

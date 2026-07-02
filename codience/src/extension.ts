@@ -6,11 +6,32 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new SidebarProvider(context.extensionUri);
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      SidebarProvider.viewType,
-      provider,
-    ),
+    vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, provider),
   );
+
+  // Register a URI handler so external OAuth redirects (vscode://.../?code=...)
+  // can be forwarded back to the webview.
+  const uriHandler = vscode.window.registerUriHandler({
+    handleUri(uri: vscode.Uri) {
+      try {
+        if (uri.path !== "/callback") {
+          return;
+        }
+
+        const params = new URLSearchParams(uri.query);
+        const code = params.get("code");
+        if (!code) {
+          return;
+        }
+
+        // forward to the provider (if it has an active webview)
+        provider.handleIncomingUri(code, uri.toString());
+      } catch (err) {
+        console.error("Failed to handle incoming URI", err);
+      }
+    },
+  });
+  context.subscriptions.push(uriHandler);
 }
 
 export function deactivate() {}
@@ -18,24 +39,34 @@ export function deactivate() {}
 class SidebarProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "sidebarView";
 
+  private _webviewView?: vscode.WebviewView;
+
   constructor(private readonly _extensionUri: vscode.Uri) {}
+
+  // Called by the activate() URI handler to push the code back into the webview
+  public handleIncomingUri(code: string | null, fullUri?: string) {
+    if (!this._webviewView) {
+      return;
+    }
+    this._webviewView.webview.postMessage({
+      type: "jiraAuthCode",
+      code,
+      uri: fullUri,
+    });
+  }
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
     context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ) {
+    this._webviewView = webviewView;
     const webview = webviewView.webview;
 
     webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        vscode.Uri.joinPath(
-          this._extensionUri,
-          "webview-ui",
-          "webview-ui",
-          "dist",
-        ),
+        vscode.Uri.joinPath(this._extensionUri, "webview-ui", "webview-ui", "dist"),
       ],
     };
 
@@ -70,7 +101,6 @@ class SidebarProvider implements vscode.WebviewViewProvider {
       },
     );
 
-    // Inject CSP (Content Security Policy)
     html = html.replace(
       "<head>",
       `<head>
@@ -84,15 +114,35 @@ class SidebarProvider implements vscode.WebviewViewProvider {
           https://codience.onrender.com
           https://sphery-arlen-nondecorative.ngrok-free.dev
           https://fordless-samella-unexpendable.ngrok-free.dev
-          http://localhost:5051/
-          http://localhost:8000/
-          http://127.0.0.1:8000/
-          http://127.0.0.1:8001/
-          http://127.0.0.1:8002/;
-          http://127.0.0.1:8003/;
+          http://localhost:5051
+          http://localhost:8000
+          http://127.0.0.1:8000
+          http://127.0.0.1:8001
+          http://127.0.0.1:8002
+          http://127.0.0.1:8003;
       ">
   `,
     );
+
+    // Wire messages from the webview:
+    // - openExternal: extension will open the external browser for OAuth
+    webview.onDidReceiveMessage((message) => {
+      try {
+        if (!message || typeof message !== "object") {
+          return;
+        }
+        if (message.command === "openExternal" && message.url) {
+          vscode.env.openExternal(vscode.Uri.parse(String(message.url)));
+        }
+      } catch (err) {
+        console.error("Error handling message from webview:", err);
+      }
+    });
+
+    // Clear stored webview when disposed
+    webviewView.onDidDispose(() => {
+      this._webviewView = undefined;
+    });
 
     webview.html = html;
   }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  enrichPRsWithBusinessImpact,
   enrichPRsWithFilesChanged,
-  enrichPRsWithRisk,
   fetchPRs,
+  normalizePullRequest,
 } from "../services/prs.service";
+import { enrichPRsWithBusinessImpact } from "../services/businessImpact.service";
+import { enrichPRsWithRisk } from "../services/risk.service";
+import { subscribeToPullRequestCreated } from "../services/pullRequestsHub.service";
 import type { PullRequest } from "../types/PullRequest";
 
 type PRCache = {
@@ -25,8 +27,25 @@ const prCache: PRCache = {
   subscribers: new Set(),
 };
 
+let livePRUnsubscribe: (() => void) | null = null;
+let livePRRepoKey: string | null = null;
+
 const emitPRCacheUpdate = () => {
   prCache.subscribers.forEach((subscriber) => subscriber());
+};
+
+const resetPRCache = () => {
+  livePRUnsubscribe?.();
+  livePRUnsubscribe = null;
+  livePRRepoKey = null;
+
+  setPRCache({
+    data: null,
+    loading: true,
+    error: null,
+    promise: null,
+    repo: null,
+  });
 };
 
 const setPRCache = (next: Partial<Pick<PRCache, "data" | "loading" | "error" | "promise" | "repo">>) => {
@@ -96,6 +115,95 @@ const mergePRCacheItem = (updatedPR: PullRequest) => {
   });
 };
 
+const upsertPRCacheItem = (updatedPR: PullRequest) => {
+  if (!prCache.data) {
+    setPRCache({ data: [updatedPR] });
+    return;
+  }
+
+  const existingIndex = prCache.data.findIndex((pr) => pr.number === updatedPR.number);
+
+  if (existingIndex === -1) {
+    setPRCache({ data: [updatedPR, ...prCache.data] });
+    return;
+  }
+
+  mergePRCacheItem(updatedPR);
+};
+
+const enrichNewPullRequest = (pr: PullRequest) => {
+  const filesPromise = enrichPRsWithFilesChanged([pr], (updatedPR) => {
+    mergePRCacheItem(updatedPR);
+  }).catch((filesErr) => {
+    console.error("Files changed enrichment failed:", filesErr);
+  });
+
+  const riskPromise = enrichPRsWithRisk([pr], (updatedPR) => {
+    mergePRCacheItem(updatedPR);
+  }).catch((riskErr) => {
+    console.error("Risk enrichment failed:", riskErr);
+  });
+
+  const businessImpactPromise = enrichPRsWithBusinessImpact([pr], (updatedPR) => {
+    mergePRCacheItem(updatedPR);
+  }).catch((businessImpactErr) => {
+    console.error("Business impact enrichment failed:", businessImpactErr);
+  });
+
+  void Promise.allSettled([filesPromise, riskPromise, businessImpactPromise]);
+};
+
+const getGitHubAppRegistrationId = () =>
+  "95bbca99-517c-4832-8e58-9ac26ed13c6e";
+
+const ensureLivePRSubscription = () => {
+  const repo = localStorage.getItem("RepoName");
+  const userName = localStorage.getItem("User");
+  const owner = localStorage.getItem("ownerName") ?? userName;
+
+  if (!repo || !userName || !owner) {
+    return;
+  }
+
+  const repoKey = `${owner}/${repo}`;
+
+  if (livePRRepoKey === repoKey && livePRUnsubscribe) {
+    return;
+  }
+
+  livePRUnsubscribe?.();
+  livePRUnsubscribe = null;
+  livePRRepoKey = repoKey;
+
+  void subscribeToPullRequestCreated(
+    {
+      userId: getGitHubAppRegistrationId(),
+      owner,
+      repo,
+    },
+    (payload) => {
+      const newPR = normalizePullRequest(payload);
+      upsertPRCacheItem(newPR);
+      enrichNewPullRequest(newPR);
+    },
+  )
+    .then((unsubscribe) => {
+      if (livePRRepoKey !== repoKey) {
+        unsubscribe();
+        return;
+      }
+
+      livePRUnsubscribe = unsubscribe;
+    })
+    .catch((err) => {
+      if (livePRRepoKey === repoKey) {
+        livePRRepoKey = null;
+      }
+
+      console.error("Failed to subscribe to pull request updates:", err);
+    });
+};
+
 export const usePRs = () => {
   const [data, setData] = useState<PullRequest[] | null>(prCache.data);
   const [loading, setLoading] = useState(prCache.loading);
@@ -137,24 +245,27 @@ export const usePRs = () => {
         const res = await fetchPRs();
 
         setPRCache({ data: res, loading: false, error: null, repo: currentRepo ?? null });
+        ensureLivePRSubscription();
 
-        void enrichPRsWithFilesChanged(res, (updatedPR) => {
+        const filesPromise = enrichPRsWithFilesChanged(res, (updatedPR) => {
           mergePRCacheItem(updatedPR);
         }).catch((filesErr) => {
           console.error("Files changed enrichment failed:", filesErr);
         });
 
-        void enrichPRsWithRisk(res, (updatedPR) => {
+        const riskPromise = enrichPRsWithRisk(res, (updatedPR) => {
           mergePRCacheItem(updatedPR);
         }).catch((riskErr) => {
           console.error("Risk enrichment failed:", riskErr);
         });
 
-        void enrichPRsWithBusinessImpact(res, (updatedPR) => {
+        const businessImpactPromise = enrichPRsWithBusinessImpact(res, (updatedPR) => {
           mergePRCacheItem(updatedPR);
         }).catch((businessImpactErr) => {
           console.error("Business impact enrichment failed:", businessImpactErr);
         });
+
+        void Promise.allSettled([filesPromise, riskPromise, businessImpactPromise]);
 
         return res;
       } catch (err) {
@@ -189,5 +300,7 @@ export const usePRs = () => {
 
   return { data, loading, error, reload: load };
 };
+
+export const clearPRState = resetPRCache;
 
 export default usePRs;

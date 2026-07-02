@@ -1,26 +1,17 @@
 import axios from "axios";
+import type { JiraLoginResponse } from "../types/JiraAuth";
+import type { JiraExchangeResponse } from "../types/JiraAuth";
 
 const JIRA_LOGIN_URL = "http://localhost:5051/api/Jira/login";
 const JIRA_EXCHANGE_URL = "http://localhost:5051/api/Jira/exchange";
 
-export interface JiraLoginResponse {
-  url?: string;
-}
-
-export interface JiraProject {
-  key: string;
-  name: string;
-}
-
-export interface JiraExchangeResponse {
-  accessToken: string;
-  cloudId: string;
-  projects?: JiraProject[];
-}
+type JiraLoginState = "webapp" | "vscode";
 
 export const jiraService = {
-  async fetchLoginUrl(): Promise<string> {
-    const response = await axios.get<JiraLoginResponse>(JIRA_LOGIN_URL);
+  async fetchLoginUrl(state: JiraLoginState = "webapp"): Promise<string> {
+    const response = await axios.get<JiraLoginResponse>(JIRA_LOGIN_URL, {
+      params: { state },
+    });
 
     if (!response.data?.url) {
       throw new Error("Jira login response did not include a redirect URL.");

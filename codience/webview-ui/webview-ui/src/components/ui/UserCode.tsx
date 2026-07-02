@@ -30,27 +30,12 @@ const DeviceCodeCard = () => {
         setLoading(true);
         setError(null);
 
-        console.log("🔵 Fetching device code...");
-
         const deviceResponse = await fetchDeviceCode();
-
-        console.log("✅ Device Code API Response:", deviceResponse);
-
         setDeviceData(deviceResponse);
-
-        console.log("🔵 Sending device code to exchange API...");
-
         const token = await exchangeDeviceCode(deviceResponse);
-
-        console.log("✅ Exchange API Response:", token);
-
         localStorage.setItem("User", token.login);
-
-        console.log("📦 Username stored in localStorage:", token.login);
-
         navigate("/getRepo");
       } catch (err: any) {
-        console.error("❌ Authentication flow failed:", err);
         setError(err?.message || "Authentication failed");
       } finally {
         setLoading(false);

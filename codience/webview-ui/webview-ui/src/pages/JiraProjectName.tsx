@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import "./styles/GetRepoName.css";
-import jiraService, { type JiraProject } from "../services/jiraService";
+import jiraService from "../services/jiraService";
+import type { JiraProject } from "../types/JiraAuth";
 
 interface JiraProjectLocationState {
   projects?: JiraProject[];

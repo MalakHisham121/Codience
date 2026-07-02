@@ -9,6 +9,40 @@ import type { PullRequest } from "../types/PullRequest";
 import "./styles/Dashboard.css";
 import { usePRs } from "../hooks/usePRs";
 
+const toNumericScore = (value: number | string | undefined) => {
+  if (typeof value === "number") return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isHighBusinessImpact = (pr: PullRequest) => {
+  const tier = pr.business_impact?.tier?.toLowerCase();
+  if (tier === "high") return true;
+
+  const score = toNumericScore(pr.business_impact?.weighted_score);
+  return score !== null && score >= 70;
+};
+
+const parsePRDate = (value: string | undefined) => {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const dayMonthYear = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+  if (dayMonthYear) {
+    const [, day, month, year] = dayMonthYear;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const toDayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const projectName: string | null = localStorage.getItem("RepoName");
@@ -40,14 +74,14 @@ const Dashboard: React.FC = () => {
   const stats = useMemo(() => {
     let open = 0;
     let highRisk = 0;
-    let highPriority = 0;
-    if (!updatedPRs) return { open, highRisk, highPriority };
+    let highImpact = 0;
+    if (!updatedPRs) return { open, highRisk, highImpact };
     updatedPRs.forEach((p) => {
       if (p.state === "open") open++;
-      const anyP = p as any;
-      if (anyP?.risk?.risk_level === "high") highRisk++;
+      if (p.risk?.risk_level === "high") highRisk++;
+      if (isHighBusinessImpact(p)) highImpact++;
     });
-    return { open, highRisk, highPriority };
+    return { open, highRisk, highImpact };
   }, [updatedPRs]);
 
   const handleSelectPR = (pr: PullRequest) => {
@@ -103,38 +137,31 @@ const Dashboard: React.FC = () => {
   const prsPerDay = useMemo(() => {
     const days = 7;
     const now = new Date();
-    const labels: string[] = [];
+    const dayBuckets: { key: string; label: string }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-      labels.push(
-        d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      );
+      dayBuckets.push({
+        key: toDayKey(d),
+        label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      });
     }
 
     const counts: Record<string, number> = {};
-    labels.forEach((l) => (counts[l] = 0));
+    dayBuckets.forEach(({ key }) => (counts[key] = 0));
 
     const source = visiblePRs ?? updatedPRs ?? prs ?? [];
     source.forEach((pr) => {
-      const date = pr.createdAt ? new Date(pr.createdAt) : null;
-      if (!date || Number.isNaN(date.getTime())) return;
-      const label = date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      });
-      if (counts[label] === undefined) counts[label] = 0;
-      counts[label]++;
+      const date = parsePRDate(pr.createdAt);
+      if (!date) return;
+
+      const key = toDayKey(date);
+      if (counts[key] !== undefined) counts[key]++;
     });
 
-  const hasAny = Object.values(counts).some((v) => v > 0);
-
-if (!hasAny) {
-  labels.forEach((l) => {
-    counts[l] = 0;
-  });
-}
-
-    return labels.map((l) => ({ date: l, count: counts[l] ?? 0 }));
+    return dayBuckets.map(({ key, label }) => ({
+      date: label,
+      count: counts[key] ?? 0,
+    }));
   }, [visiblePRs, updatedPRs, prs]);
 
   const openClosedData = useMemo(() => {
@@ -178,8 +205,8 @@ if (!hasAny) {
                 },
                 { label: "Open PRs", value: stats.open, className: "open" },
                 {
-                  label: "High Priority",
-                  value: stats.highPriority,
+                  label: "High Impact",
+                  value: stats.highImpact,
                   className: "highRisk",
                 },
                 {
@@ -270,6 +297,7 @@ if (!hasAny) {
               </div>
             </aside>
             <div className="bottomChartContainer">
+              <h4 className="blockTitle">Risk Level</h4>
               <RiskBarChart data={chartData} />
             </div>
           </div>

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  fetchGitHubProfile,
-  type GitHubProfile,
+  fetchGitHubProfile
 } from "../services/profile.service";
-
+import type { GitHubProfile } from "../types/GitHubProfile";
 export const useGitHubProfile = (username: string | null) => {
   const [profile, setProfile] = useState<GitHubProfile | null>(null);
   const [loading, setLoading] = useState(Boolean(username));

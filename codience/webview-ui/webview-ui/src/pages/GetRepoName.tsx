@@ -3,62 +3,11 @@ import { useNavigate } from "react-router-dom";
 import "./styles/GetRepoName.css";
 import { useRepo } from "../hooks/useRepo";
 import type { GitHubRepo } from "../types/GitHubRepo";
-import { storeOwnerNameFromRepoUrl } from "../services/repos.service";
-
-const REPOS_URL = "http://localhost:5051/api/GithubAuth/repos";
-
-interface RepoApiItem {
-  name: string;
-  url: string;
-  description: string | null;
-}
-
-const getRepoUrlParts = (url: string) => {
-  try {
-    const parsedUrl = new URL(url);
-    const parts = parsedUrl.pathname.split("/").filter(Boolean);
-    return {
-      owner: parts[0] ?? "",
-      repo: parts[1] ?? "",
-    };
-  } catch {
-    return { owner: "", repo: "" };
-  }
-};
-
-const normalizeRepo = (item: RepoApiItem): GitHubRepo => {
-  const { owner, repo } = getRepoUrlParts(item.url);
-
-  return {
-    name: item.name || repo,
-    full_name: owner && repo ? `${owner}/${repo}` : item.name || repo,
-    html_url: item.url,
-    description: item.description,
-    owner: owner ? { login: owner } : undefined,
-  };
-};
-
-const fetchUserRepos = async (
-  userName: string,
-  page = 1,
-  pageSize = 50,
-): Promise<GitHubRepo[]> => {
-  const response = await fetch(
-    `${REPOS_URL}?userName=${encodeURIComponent(userName)}&page=${page}&pageSize=${pageSize}`,
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to load repositories.");
-  }
-
-  const data = (await response.json()) as
-    | RepoApiItem[]
-    | { items?: RepoApiItem[]; data?: RepoApiItem[] };
-
-  const repos = Array.isArray(data) ? data : data.items ?? data.data ?? [];
-
-  return repos.map(normalizeRepo);
-};
+import {
+  fetchUserRepos,
+  storeOwnerNameFromRepoUrl,
+} from "../services/repos.service";
+import { connectGitHubApp } from "../services/githubApp.service";
 
 const GetRepoName = () => {
   const [query, setQuery] = useState("");
@@ -114,15 +63,56 @@ const GetRepoName = () => {
     setQuery(repoName);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!selectedRepo) return;
 
-    const repoName = getRepoLabel(selectedRepo);
-    if (selectedRepo.html_url) {
-      storeOwnerNameFromRepoUrl(selectedRepo.html_url);
+    try {
+      setLoading(true);
+      setError(null);
+
+      const repoName = getRepoLabel(selectedRepo);
+      const parsedOwner =
+        selectedRepo.html_url
+          ? storeOwnerNameFromRepoUrl(selectedRepo.html_url)
+          : selectedRepo.owner?.login ?? localStorage.getItem("ownerName") ?? userName;
+      const owner =
+        parsedOwner ||
+        selectedRepo.owner?.login ||
+        localStorage.getItem("ownerName") ||
+        userName;
+
+      if (owner) {
+        localStorage.setItem("ownerName", owner);
+      }
+
+      setRepo(repoName);
+
+      const appConnection = await connectGitHubApp({
+        userName,
+        owner,
+        repo: repoName,
+      });
+
+      if (!appConnection.isInstalled) {
+        if (appConnection.installUrl) {
+          localStorage.setItem("GitHubAppInstallUrl", appConnection.installUrl);
+        }
+
+        navigate("/github-app-install", {
+          state: {
+            installUrl: appConnection.installUrl,
+            message: appConnection.message,
+          },
+        });
+        return;
+      }
+
+      navigate("/jira-login");
+    } catch (err: any) {
+      setError(err?.message || "Failed to connect GitHub App.");
+    } finally {
+      setLoading(false);
     }
-    setRepo(repoName);
-    navigate("/jira-login");
   };
 
   return (
@@ -176,11 +166,13 @@ const GetRepoName = () => {
 
         <button
           onClick={submit}
-          disabled={!selectedRepo}
+          disabled={!selectedRepo || loading}
           className="reviewersAuthButton repoContinueButton"
         >
-          Continue
+          {loading ? "Checking GitHub App..." : "Continue"}
         </button>
+
+        {error && <div className="repoMenuState repoMenuError">{error}</div>}
       </div>
     </div>
   );

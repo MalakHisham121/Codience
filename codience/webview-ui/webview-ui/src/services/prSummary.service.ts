@@ -1,8 +1,6 @@
 import axios from "axios";
+import type { PRSummaryResponse } from "../types/PRSummary";
 
-interface PrSummaryResponse {
-  summary?: string;
-}
 
 const SUMMARY_BASE_URL = "http://127.0.0.1:8002/summarize";
 
@@ -28,7 +26,7 @@ export const fetchPrSummary = async (prNumber: number): Promise<string> => {
 
   const { owner, repo } = getGitHubSummaryContext();
   const url = `${SUMMARY_BASE_URL}/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
-  const response = await axios.get<PrSummaryResponse>(url);
+  const response = await axios.get<PRSummaryResponse>(url);
 
   return response.data?.summary ?? "";
 };

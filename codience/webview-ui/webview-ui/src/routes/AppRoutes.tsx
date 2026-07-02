@@ -4,6 +4,7 @@ import UserCode from "../components/ui/UserCode";
 import JiraLogin from "../pages/JiraLogin";
 import JiraProjectName from "../pages/JiraProjectName";
 import GetRepoName from "../pages/GetRepoName";
+import GitHubAppInstall from "../pages/GitHubAppInstall";
 import SideBarLayout from "../pages/SideBarLayout";
 import Home from "../pages/Home";
 import ReviewerRecommendationSettings from "../pages/ReviewerRecommendationSettings";
@@ -17,6 +18,7 @@ export default function AppRoutes() {
       <Route path="/signIn" element={<UserCode />} />
       <Route path="/jira-login" element={<JiraLogin />} />
       <Route path="/jira-project" element={<JiraProjectName />} />
+      <Route path="/github-app-install" element={<GitHubAppInstall />} />
       <Route path="/getRepo" element={<GetRepoName />} />
 
       <Route element={<SideBarLayout />}>

@@ -123,9 +123,9 @@ const PRsTable = ({ prs, onSelect, onVisibleChange }: Props) => {
       list.sort((a, b) => {
         let res = 0;
         if (sortBy === "risk") {
-          const map = (lvl?: string) =>
-            lvl === "high" ? 3 : lvl === "medium" ? 2 : lvl === "low" ? 1 : 0;
-          res = map(a.risk?.risk_level) - map(b.risk?.risk_level);
+          res =
+            toSortableScore(a.risk?.risk_score) -
+            toSortableScore(b.risk?.risk_score);
         } else if (sortBy === "businessImpact") {
           res =
             toSortableScore(a.business_impact?.weighted_score) -
@@ -223,7 +223,7 @@ const PRsTable = ({ prs, onSelect, onVisibleChange }: Props) => {
               onChange={(e) => setSortBy(e.target.value as any)}
             >
               <option value="none">None</option>
-              <option value="risk">Risk Level</option>
+              <option value="risk">Risk Score</option>
               <option value="businessImpact">Business Impact</option>
               <option value="title">Title</option>
               <option value="files">Files Changed</option>

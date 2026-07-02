@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ReviewersList from "../components/reviewers/ReviewersList";
 import { usePrSummary } from "../hooks/usePrSummary";
-import { fetchBusinessImpactForPR } from "../services/prs.service";
+import { fetchBusinessImpactForPR } from "../services/businessImpact.service";
 import type { BusinessImpactType } from "../types/BusinessImpactType";
 import type { PullRequest } from "../types/PullRequest";
 import "./styles/PrSummaryDetails.css";

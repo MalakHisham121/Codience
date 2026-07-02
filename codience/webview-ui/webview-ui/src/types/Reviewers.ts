@@ -31,3 +31,13 @@ export interface ReviewerRecommendationSettings {
   requiredReviewers: RequiredReviewer[];
   updatedAt: string;
 }
+
+export interface ReviewerRecommendationApiItem {
+  name: string;
+  confidence_score: number;
+  justification?: string;
+}
+
+export interface ReviewerRecommendationApiResponse {
+  recommended_reviewers?: ReviewerRecommendationApiItem[];
+}

@@ -38,8 +38,8 @@ const normalizeRepo = (item: RepoApiItem): GitHubRepo => {
   const { owner, repo } = getRepoUrlParts(item.url);
 
   return {
-    name: item.name || repo,
-    full_name: owner && repo ? `${owner}/${repo}` : item.name || repo,
+    name: item.name,
+    full_name: owner && repo ? `${owner}/${repo}` : item.name ,
     html_url: item.url,
     description: item.description,
     owner: owner ? { login: owner } : undefined,

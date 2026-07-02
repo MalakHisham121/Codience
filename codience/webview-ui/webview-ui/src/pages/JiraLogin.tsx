@@ -3,11 +3,25 @@ import { useNavigate } from "react-router-dom";
 import "./styles/JiraLogin.css";
 import jiraService from "../services/jiraService.ts";
 
+type JiraAuthMessage = {
+  type?: string;
+  code?: string;
+};
+
+const isVsCodeWebview = () =>
+  typeof (window as Window & { acquireVsCodeApi?: () => unknown }).acquireVsCodeApi ===
+  "function";
+
+type VsCodeApi = {
+  postMessage: (message: unknown) => void;
+};
+
 const JiraLogin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const exchangeStartedRef = useRef(false);
+  const vscodeApiRef = useRef<VsCodeApi | null>(null);
 
   const exchangeCode = async (code: string) => {
     if (exchangeStartedRef.current) {
@@ -41,7 +55,23 @@ const JiraLogin = () => {
       setLoading(true);
       setError(null);
 
-      const url = await jiraService.fetchLoginUrl();
+      const state = isVsCodeWebview() ? "vscode" : "webapp";
+      const url = await jiraService.fetchLoginUrl(state);
+
+      if (state === "vscode") {
+        if (!vscodeApiRef.current) {
+          const acquireVsCodeApi = (window as Window & {
+            acquireVsCodeApi?: () => VsCodeApi;
+          }).acquireVsCodeApi;
+
+          if (typeof acquireVsCodeApi === "function") {
+            vscodeApiRef.current = acquireVsCodeApi();
+          }
+        }
+
+        vscodeApiRef.current?.postMessage({ command: "openExternal", url });
+        return;
+      }
 
       window.location.assign(url);
     } catch (loginError: any) {
@@ -72,12 +102,23 @@ const JiraLogin = () => {
       return;
     }
 
+    const handleMessage = (event: MessageEvent<unknown>) => {
+      const message = event.data as JiraAuthMessage;
+
+      if (message.type === "jiraAuthCode" && message.code) {
+        void exchangeCode(message.code);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
     const intervalId = window.setInterval(() => {
       searchForCode();
     }, 500);
 
     return () => {
       window.clearInterval(intervalId);
+      window.removeEventListener("message", handleMessage);
     };
   }, []);
 

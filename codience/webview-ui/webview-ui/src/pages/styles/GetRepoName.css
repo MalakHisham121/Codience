@@ -34,6 +34,18 @@
   text-align: center;
 }
 
+.githubAppInstallContainer {
+  min-height: 300px;
+}
+
+.githubAppInstallMessage {
+  margin: 0;
+  color: #bdbdbd;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .repoSearchBox {
   width: 100%;
   display: flex;

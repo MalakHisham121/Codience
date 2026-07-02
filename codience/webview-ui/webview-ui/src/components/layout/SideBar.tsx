@@ -2,11 +2,13 @@ import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import "../styles/SideBar.css";
 import logo from "../../assets/codience logo (3).png";
+import { clearPRState } from "../../hooks/usePRs";
 
 const SideBar = () => {
   const navigate = useNavigate();
 
   const handleSignOut = () => {
+    clearPRState();
     localStorage.clear();
     navigate("/");
   };
