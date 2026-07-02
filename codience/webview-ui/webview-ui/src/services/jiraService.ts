@@ -2,8 +2,8 @@ import axios from "axios";
 import type { JiraLoginResponse } from "../types/JiraAuth";
 import type { JiraExchangeResponse } from "../types/JiraAuth";
 
-const JIRA_LOGIN_URL = "http://localhost:5051/api/Jira/login";
-const JIRA_EXCHANGE_URL = "http://localhost:5051/api/Jira/exchange";
+const JIRA_LOGIN_URL = "http://127.0.0.1:5051/api/Jira/login";
+const JIRA_EXCHANGE_URL = "http://127.0.0.1:5051/api/Jira/exchange";
 
 type JiraLoginState = "webapp" | "vscode";
 
