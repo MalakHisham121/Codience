@@ -36,12 +36,13 @@ public class JiraService : IJiraService
         var response = await _httpClient.PostAsJsonAsync("https://auth.atlassian.com/oauth/token", body);
         var json = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode) throw new Exception("Jira OAuth Error: " + json);
-        var token = JsonSerializer.Deserialize<JsonElement>(json);
+        
+        var token = JsonSerializer.Deserialize<AccessTokenResponse>(json);
 
-        if (!token.TryGetProperty("access_token", out var accessToken))
+        if (string.IsNullOrEmpty(token?.AccessToken))
             throw new Exception("access_token not found in response: " + json);
 
-        return accessToken.GetString()!;
+        return token.AccessToken;
     }
 
     public async Task<JsonElement> GetAccessibleResources(string accessToken)
