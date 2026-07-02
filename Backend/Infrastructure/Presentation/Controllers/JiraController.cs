@@ -68,12 +68,13 @@ public class JiraController : ControllerBase
     [HttpGet("callback")]
     public async Task<IActionResult> Callback(string code, string state = "vscode")
     {
-        var frontendUrl = _configuration["Jira:FrontendUrl"];
         var redirectPath = _configuration["Jira:FrontendRedirectPath"] ?? "/callback";
-        var redirectUri = $"{frontendUrl}{redirectPath}?code={code}";
 
         if (state == "vscode")
         {
+            var vscodeUrl = _configuration["Jira:VsCodeUrl"] ?? "vscode://malakhisham121.codience"; // Replace with your actual publisher.name
+            var redirectUri = $"{vscodeUrl}{redirectPath}?code={code}";
+            
             var templatePath = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "Infrastructure", "Presentation", "Templates", "JiraAuthSuccess.html"));
             var html = await System.IO.File.ReadAllTextAsync(templatePath);
             html = html.Replace("{{CODE}}", code).Replace("{{REDIRECT_URI}}", redirectUri);
@@ -81,7 +82,9 @@ public class JiraController : ControllerBase
         }
 
         // Default web app behavior: normal HTTP redirect
-        return Redirect(redirectUri);
+        var frontendUrl = _configuration["Jira:FrontendUrl"];
+        var webAppRedirectUri = $"{frontendUrl}{redirectPath}?code={code}";
+        return Redirect(webAppRedirectUri);
     }
 
     [HttpPost("assigned-tickets")]
