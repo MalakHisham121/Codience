@@ -87,10 +87,32 @@ const JiraLogin = () => {
   const [manualCode, setManualCode] = useState("");
 
   const handleManualSubmit = () => {
-    if (manualCode.trim()) {
-      addDebug("Manual code submitted");
-      exchangeCode(manualCode.trim());
+    let input = manualCode.trim();
+    if (!input) return;
+
+    if (input.includes("auth.atlassian.com/authorize")) {
+      setError("You pasted the authorization URL. Please login using that URL in your browser, then copy the 'code' parameter from the URL you are redirected to.");
+      return;
     }
+
+    let codeToExchange = input;
+    if (input.includes("code=")) {
+      try {
+        const url = new URL(input);
+        const extracted = url.searchParams.get("code");
+        if (extracted) {
+          codeToExchange = extracted;
+        }
+      } catch (e) {
+        const match = input.match(/[?&]code=([^&]+)/);
+        if (match) {
+          codeToExchange = match[1];
+        }
+      }
+    }
+
+    addDebug("Manual code submitted: " + codeToExchange.substring(0, 5) + "...");
+    exchangeCode(codeToExchange);
   };
 
   return (

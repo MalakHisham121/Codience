@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
   const uriHandler = vscode.window.registerUriHandler({
     handleUri(uri: vscode.Uri) {
       try {
-        if (uri.path !== "/callback") {
+        if (uri.path !== "/callback" && uri.path !== "/jira-login") {
           return;
         }
 
@@ -148,7 +148,7 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         }
         if (message.command === "openExternal" && message.url) {
           let url = String(message.url);
-          if (url.includes("state=vscode")) {
+          if (url.includes("state=vscode") && vscode.env.uriScheme !== "vscode") {
             url = url.replace("state=vscode", `state=vscode-${vscode.env.uriScheme}`);
           }
           vscode.env.openExternal(vscode.Uri.parse(url));
