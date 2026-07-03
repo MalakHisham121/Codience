@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { JiraLoginResponse } from "../types/JiraAuth";
-import type { JiraExchangeResponse } from "../types/JiraAuth";
+import type { JiraExchangeResponse, JiraProject } from "../types/JiraAuth";
 
 const JIRA_LOGIN_URL = "http://127.0.0.1:5051/api/Jira/login";
 const JIRA_EXCHANGE_URL = "http://127.0.0.1:5051/api/Jira/exchange";
@@ -37,6 +37,26 @@ export const jiraService = {
     localStorage.setItem("JiraCloudId", data.cloudId);
   },
 
+  storeProjects(projects: JiraProject[]) {
+    localStorage.setItem("JiraProjects", JSON.stringify(projects ?? []));
+  },
+
+  getStoredProjects(): JiraProject[] {
+    try {
+      const raw = localStorage.getItem("JiraProjects");
+
+      if (!raw) {
+        return [];
+      }
+
+      const parsed = JSON.parse(raw) as JiraProject[];
+
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
   storeProjectKey(projectKey: string) {
     localStorage.setItem("JiraProjectKey", projectKey);
   },
@@ -45,6 +65,7 @@ export const jiraService = {
     localStorage.removeItem("JiraAccessToken");
     localStorage.removeItem("JiraCloudId");
     localStorage.removeItem("JiraProjectKey");
+    localStorage.removeItem("JiraProjects");
   },
 
   getCodeFromSearch(search: string = window.location.search) {

@@ -20,7 +20,12 @@ const JiraLogin = () => {
       const data = await jiraService.exchangeCode(code);
       addDebug("Exchange success!");
       jiraService.storeSession(data);
-      navigate("/home");
+      jiraService.storeProjects(data.projects ?? []);
+      navigate("/jira-project", {
+        state: {
+          projects: data.projects ?? [],
+        },
+      });
     } catch (err: any) {
       addDebug(`Exchange error: ${err?.message}`);
       setError(err?.message || "Failed to complete Jira authentication.");
