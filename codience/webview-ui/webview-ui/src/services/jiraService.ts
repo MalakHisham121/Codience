@@ -37,6 +37,13 @@ export const jiraService = {
     localStorage.setItem("JiraCloudId", data.cloudId);
   },
 
+  hasSession() {
+    return Boolean(
+      localStorage.getItem("JiraAccessToken")?.trim() &&
+        localStorage.getItem("JiraCloudId")?.trim(),
+    );
+  },
+
   storeProjects(projects: JiraProject[]) {
     localStorage.setItem("JiraProjects", JSON.stringify(projects ?? []));
   },
