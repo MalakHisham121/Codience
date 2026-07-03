@@ -15,12 +15,14 @@ const JiraProjectName = () => {
   const [selectedProject, setSelectedProject] = useState<JiraProject | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const projects = (location.state as JiraProjectLocationState | null)?.projects ?? [];
+  const projects =
+    (location.state as JiraProjectLocationState | null)?.projects ??
+    jiraService.getStoredProjects();
 
   const matches = useMemo(() => {
     const search = query.trim().toLowerCase();
 
-    if (!search) return [];
+    if (!search) return projects;
 
     return projects.filter((project) => {
       const projectName = project.name?.toLowerCase() ?? "";
@@ -65,31 +67,29 @@ const JiraProjectName = () => {
             autoComplete="off"
           />
 
-          {query.trim().length > 0 && (
-            <div className="repoMenu" role="listbox" aria-label="Jira project suggestions">
-              {projects.length === 0 && (
-                <div className="repoMenuState">No Jira projects returned.</div>
-              )}
-              {projects.length > 0 && matches.length === 0 && (
-                <div className="repoMenuState">No matching Jira projects found.</div>
-              )}
-              {matches.map((project) => {
-                return (
-                  <button
-                    key={project.key}
-                    type="button"
-                    className="repoMenuItem"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      pickProject(project);
-                    }}
-                  >
-                    <span className="repoMenuItemTitle">{project.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div className="repoMenu" role="listbox" aria-label="Jira project suggestions">
+            {projects.length === 0 && (
+              <div className="repoMenuState">No Jira projects returned.</div>
+            )}
+            {projects.length > 0 && matches.length === 0 && (
+              <div className="repoMenuState">No matching Jira projects found.</div>
+            )}
+            {matches.map((project) => {
+              return (
+                <button
+                  key={project.key}
+                  type="button"
+                  className="repoMenuItem"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    pickProject(project);
+                  }}
+                >
+                  <span className="repoMenuItemTitle">{project.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button

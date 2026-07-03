@@ -22,6 +22,7 @@ const GlobalJiraListener = () => {
         
         // Use the existing jiraService to store tokens
         jiraService.storeSession(data);
+        jiraService.storeProjects(data.projects ?? []);
         
         // Optionally also store directly as requested by the plan
         localStorage.setItem("jiraToken", data.accessToken);

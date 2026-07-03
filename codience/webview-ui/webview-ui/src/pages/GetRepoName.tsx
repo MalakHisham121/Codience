@@ -8,6 +8,7 @@ import {
   storeOwnerNameFromRepoUrl,
 } from "../services/repos.service";
 import { connectGitHubApp } from "../services/githubApp.service";
+import jiraService from "../services/jiraService";
 
 const GetRepoName = () => {
   const [query, setQuery] = useState("");
@@ -107,7 +108,7 @@ const GetRepoName = () => {
         return;
       }
 
-      navigate("/jira-login");
+      navigate(jiraService.hasSession() ? "/jira-project" : "/jira-login");
     } catch (err: any) {
       setError(err?.message || "Failed to connect GitHub App.");
     } finally {
