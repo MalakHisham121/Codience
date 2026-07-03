@@ -70,9 +70,21 @@ public class JiraController : ControllerBase
     {
         var redirectPath = _configuration["Jira:FrontendRedirectPath"] ?? "/callback";
 
-        if (state == "vscode")
+        if (state != null && state.StartsWith("vscode"))
         {
-            var vscodeUrl = _configuration["Jira:VsCodeUrl"] ?? "vscode://malakhisham121.codience"; // Replace with your actual publisher.name
+            var scheme = "vscode";
+            if (state.StartsWith("vscode-"))
+            {
+                scheme = state.Substring("vscode-".Length);
+            }
+
+            var vscodeUrl = _configuration["Jira:VsCodeUrl"] ?? $"{scheme}://malakhisham121.codience"; 
+            
+            if (vscodeUrl.StartsWith("vscode://") && scheme != "vscode")
+            {
+                vscodeUrl = $"{scheme}://" + vscodeUrl.Substring("vscode://".Length);
+            }
+            
             var redirectUri = $"{vscodeUrl}{redirectPath}?code={code}";
             
             var templatePath = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "Infrastructure", "Presentation", "Templates", "JiraAuthSuccess.html"));
